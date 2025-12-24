@@ -67,9 +67,3 @@ public sealed class KeycloakServices(
     }
 
 }
-
- 
-public interface IKeycloakServices
-{
-    Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default);
-}
