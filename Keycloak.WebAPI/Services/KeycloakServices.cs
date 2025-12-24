@@ -1,5 +1,7 @@
 using System;
 using System.Net;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 using Keycloak.WebAPI.Dto;
 using Keycloak.WebAPI.Options;
@@ -24,9 +26,10 @@ public sealed class KeycloakServices(
             new KeyValuePair<string, string>("client_secret", options.Value.ClientSecret),
             new KeyValuePair<string, string>("grant_type", "client_credentials")
         };
+        
+        var parametersContent = new FormUrlEncodedContent(parameters);
 
-        var response = await client.PostAsync(
-            endpoint, new FormUrlEncodedContent(parameters), cancellationToken);
+        var response = await client.PostAsync(endpoint, parametersContent, cancellationToken);
 
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
@@ -37,6 +40,48 @@ public sealed class KeycloakServices(
 
         var result  = JsonSerializer.Deserialize<GetAccessResponseDto>(content);
         return result!.AccessToken;
+    }
+
+    public async Task RegisterUserAsync(RegisterDto request, CancellationToken cancellationToken = default)
+    {
+        object data = new
+        {
+            username = request.Username,
+            firstName = request.FirstName,
+            lastName = request.LastName,
+            email = request.Email,
+            enabled = true,
+            emailVerified = false,
+            credentials = new[]
+            {
+                new
+                {
+                    type = "password",
+                    value = request.Password,
+                    temporary = false
+                }
+            }
+        };
+
+        string token = await GetAccessTokenAsync(cancellationToken);
+
+        using var client = httpClientFactory.CreateClient();
+        client.BaseAddress = new Uri(options.Value.HostName);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        
+        var endpoint = $"/admin/realms/{options.Value.Realm}/users";
+
+        string jsonData = JsonSerializer.Serialize(data);
+        var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync(endpoint, content, cancellationToken);
+
+        var message = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            HandleErrorResponse(response.StatusCode, message);
+        }
     }
 
     private void HandleErrorResponse(HttpStatusCode statusCode, string content)
@@ -57,6 +102,11 @@ public sealed class KeycloakServices(
                 {
                     var errorResult = JsonSerializer.Deserialize<BadRequestErrorResponseDto>(content);
                     throw new InvalidOperationException($"Bad request to Keycloak server: {errorResult!.ErrorMessage}");
+                }
+            case HttpStatusCode.Conflict:
+                {
+                    var errorResult = JsonSerializer.Deserialize<BadRequestErrorResponseDto>(content);
+                    throw new InvalidOperationException($"Conflict error from Keycloak server: {errorResult!.ErrorMessage}");
                 }
             default:
                 {

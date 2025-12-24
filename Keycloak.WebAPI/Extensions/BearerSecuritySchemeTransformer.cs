@@ -29,7 +29,7 @@ internal sealed class BearerSecuritySchemeTransformer(
                 BearerFormat = "JWT"
             };
 
-        foreach (var operation in document.Paths.Values.SelectMany(p => p.Operations.Values))
+        foreach (var operation in document.Paths.Values.SelectMany(p => p.Operations!.Values))
         {
             operation.Security ??= new List<OpenApiSecurityRequirement>();
 

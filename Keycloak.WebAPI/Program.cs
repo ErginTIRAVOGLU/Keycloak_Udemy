@@ -21,6 +21,8 @@ builder.Services.AddOpenApi("v1", options => {
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IKeycloakServices, KeycloakServices>();
 
+builder.Services.AddControllers();
+
 var app = builder.Build();
 
 app.UseCors(policy =>
@@ -45,5 +47,6 @@ app.MapGet("/getToken", async (IKeycloakServices keycloakServices) =>
     return Results.Ok( new { AccessToken = token });
 });
 
+app.MapControllers();
 
 app.Run();
