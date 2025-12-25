@@ -1,4 +1,6 @@
-﻿using Keycloak.WebAPI.Extensions;
+﻿using Keycloak.AuthServices.Authentication;
+using Keycloak.AuthServices.Authorization;
+using Keycloak.WebAPI.Extensions;
 using Keycloak.WebAPI.Options;
 using Keycloak.WebAPI.Services;
 using Scalar.AspNetCore;
@@ -10,10 +12,9 @@ builder.Services.AddCors();
 builder.Services.Configure<KeycloakConfiguration>(
     builder.Configuration.GetSection("KeycloakConfiguration")); 
 
-builder.Services.AddAuthentication()
-    .AddJwtBearer();
+ 
 
-builder.Services.AddAuthorization();
+ 
 builder.Services.AddOpenApi("v1", options => { 
     options.AddDocumentTransformer<BearerSecuritySchemeTransformer>(); 
 });
@@ -22,6 +23,24 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<IKeycloakServices, KeycloakServices>();
 
 builder.Services.AddControllers();
+
+builder.Services.AddKeycloakWebApiAuthentication(builder.Configuration);
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("users", policy =>
+    {
+        policy.RequireResourceRoles("UserGetAll","UserCreate","UserUpdate","UserDelete");
+    });
+
+     options.AddPolicy("RolesGetAll", policy =>
+    {
+        policy.RequireResourceRoles("RolesGetAll");
+    });
+    options.AddPolicy("RolesCreate", policy =>
+    {
+        policy.RequireResourceRoles("RolesCreate");
+    });
+}).AddKeycloakAuthorization(builder.Configuration);
 
 var app = builder.Build();
 

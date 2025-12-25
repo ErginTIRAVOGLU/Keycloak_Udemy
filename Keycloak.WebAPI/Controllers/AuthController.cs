@@ -24,5 +24,19 @@ namespace Keycloak.WebAPI.Controllers
                 return BadRequest(Result<string>.Failure(ex.Message));
             }
         }
+
+         [HttpPost]
+        public async Task<IActionResult> Login(LoginDto request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var result = await keycloakServices.LoginUserAsync(request, cancellationToken);
+                return Ok(Result<object>.Succeed(result));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(Result<string>.Failure(ex.Message));
+            }
+        }
     }
 }
